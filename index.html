@@ -212,29 +212,31 @@
   }
 
   async function calculateOptimal() {
-    const data = await loadDataFromServer();
+  const data = await loadDataFromServer(); // ← ВСЕГДА загружаем свежие данные
+  console.log("Актуальные данные:", data); // ← Для проверки в консоли
 
-    const results = {
-      sat1: findOptimalTime(players.map(p => (data[p] && data[p].sat1) || "")),
-      sat2: findOptimalTime(players.map(p => (data[p] && data[p].sat2) || "")),
-      sun1: findOptimalTime(players.map(p => (data[p] && data[p].sun1) || "")),
-      sun2: findOptimalTime(players.map(p => (data[p] && data[p].sun2) || ""))
-    };
+  const results = {
+    sat1: findOptimalTime(players.map(p => (data[p] && data[p].sat1) || "")),
+    sat2: findOptimalTime(players.map(p => (data[p] && data[p].sat2) || "")),
+    sun1: findOptimalTime(players.map(p => (data[p] && data[p].sun1) || "")),
+    sun2: findOptimalTime(players.map(p => (data[p] && data[p].sun2) || ""))
+  };
 
-    let resultHTML = "<h2>Оптимальные времена:</h2>";
-    resultHTML += `<p><strong>Суббота 1:</strong> ${results.sat1.time}</p>`;
-    resultHTML += `<ul>${results.sat1.players.map(p => `<li>${p}</li>`).join("")}</ul>`;
+  let resultHTML = "<h2>Оптимальные времена:</h2>";
+  resultHTML += `<p><strong>Суббота 1:</strong> ${results.sat1.time}</p>`;
+  resultHTML += `<ul>${results.sat1.players.map(p => `<li>${p}</li>`).join("")}</ul>`;
 
-    resultHTML += `<p><strong>Суббота 2:</strong> ${results.sat2.time}</p>`;
-    resultHTML += `<ul>${results.sat2.players.map(p => `<li>${p}</li>`).join("")}</ul>`;
+  resultHTML += `<p><strong>Суббота 2:</strong> ${results.sat2.time}</p>`;
+  resultHTML += `<ul>${results.sat2.players.map(p => `<li>${p}</li>`).join("")}</ul>`;
 
-    resultHTML += `<p><strong>Воскресенье 1:</strong> ${results.sun1.time}</p>`;
-    resultHTML += `<ul>${results.sun1.players.map(p => `<li>${p}</li>`).join("")}</ul>`;
+  resultHTML += `<p><strong>Воскресенье 1:</strong> ${results.sun1.time}</p>`;
+  resultHTML += `<ul>${results.sun1.players.map(p => `<li>${p}</li>`).join("")}</ul>`;
 
-    resultHTML += `<p><strong>Воскресенье 2:</strong> ${results.sun2.time}</p>`;
-    resultHTML += `<ul>${results.sun2.players.map(p => `<li>${p}</li>`).join("")}</ul>`;
+  resultHTML += `<p><strong>Воскресенье 2:</strong> ${results.sun2.time}</p>`;
+  resultHTML += `<ul>${results.sun2.players.map(p => `<li>${p}</li>`).join("")}</ul>`;
 
-    document.getElementById("results").innerHTML = resultHTML;
+  document.getElementById("results").innerHTML = resultHTML;
+
   }
 
   async function init() {
