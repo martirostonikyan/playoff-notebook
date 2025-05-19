@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Блокнот для плей-офф</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0 auto;
+      max-width: 1000px;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 { text-align: center; margin-bottom: 20px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+    th { background: #eee; }
+    input {
+      width: 100%;
+      padding: 6px;
+      box-sizing: border-box;
+    }
+    .result {
+      margin-top: 30px;
+      padding: 15px;
+      background: #fff;
+      border: 1px solid #ccc;
+    }
+    button {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Блокнот для плей-офф</h1>
+
+<table id="playersTable">
+  <thead>
+    <tr>
+      <th>Игрок</th>
+      <th>Время субботы 1</th>
+      <th>Время субботы 2</th>
+      <th>Время воскресенья 1</th>
+      <th>Время воскресенья 2</th>
+    </tr>
+  </thead>
+  <tbody id="tableBody"></tbody>
+</table>
+
+<button onclick="calculateOptimal()">Найти оптимальное время</button>
+<div class="result" id="results"></div>
+
+<script>
+  const players = [
+    "Адилгалиев",
+    "Васильев",
+    "Григорьев",
+    "Делиньян",
+    "Ершов",
+    "Кузнецов",
+    "Моисеев",
+    "Петров",
+    "Рачев",
+    "Савин",
+    "Сафрыгин",
+    "Сидоров",
+    "Тоникян",
+    "Трескин",
+    "Широков"
+  ];
+
+  const fields = ["sat1", "sat2", "sun1", "sun2"];
+
+  // Замени эти значения на свои:
+  const BIN_ID = '682b4ef78960c979a59cfbf0';
+  const API_KEY = '$2a$10$.gwzdXej8Y3r5xYlrDSBMeoT7bppAIeQyN8uDMh5MbJIi1K41ZoLa'; // "$" обязателен!
+
+  function parseTime(time) {
+    if (!time || !/^\d{1,2}:\d{2}$/.test(time)) return null;
+    const [hours, minutes] = time.split(":").map(Number);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return new Date(1970, 0, 1, hours, minutes);
+  }
+
+  function findOptimalTime(times) {
+    const validTimes = times.map(time => {
+      if (!time || !time.includes("-")) return null;
+      const [startStr, endStr] = time.split("-");
+      const start = parseTime(startStr.trim());
+      const end = parseTime(endStr.trim());
+      return start && end && end > start ? { start: start.getTime(), end: end.getTime() } : null;
+    }).filter(Boolean);
+
+    if (validTimes.length === 0) return { time: "—", players: [] };
+
+    let bestOverlap = { duration: 0, start: 0, end: 0, players: [] };
+
+    validTimes.forEach((interval1, i1) => {
+      const overlapStart = interval1.start;
+      const overlapEnd = interval1.end;
+
+      const overlappingPlayers = validTimes
+        .map((interval2, i2) => interval2 && interval1.start <= interval2.end && interval1.end >= interval2.start ? i2 : -1)
+        .filter(i => i !== -1);
+
+      const duration = overlapEnd - overlapStart;
+
+      if (
+        duration > bestOverlap.duration ||
+        (duration === bestOverlap.duration && overlappingPlayers.length > bestOverlap.players.length)
+      ) {
+        bestOverlap = { duration, start: overlapStart, end: overlapEnd, players: overlappingPlayers };
+      }
+    });
+
+    if (bestOverlap.duration === 0) return { time: "Нет общего времени", players: [] };
+
+    const formatTime = ts => {
+      const date = new Date(ts);
+      return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    };
+
+    const optimalTime = `${formatTime(bestOverlap.start)} — ${formatTime(bestOverlap.end)}`;
+    const playerNames = bestOverlap.players.map(i => players[i]);
+
+    return { time: optimalTime, players: playerNames };
+  }
+
+  async function loadDataFromServer() {
+    try {
+      const res = await fetch(`https://api.jsonbin.io/v3/b/ ${BIN_ID}/latest`, {
+        headers: {
+          'X-Master-Key': API_KEY
+        }
+      });
+      const data = await res.json();
+      return data.record || {};
+    } catch (e) {
+      console.error("Ошибка загрузки данных:", e);
+      return {};
+    }
+  }
+
+  async function saveDataToServer(data) {
+    try {
+      await fetch(`https://api.jsonbin.io/v3/b/ ${BIN_ID}`, {
+        method: "PUT",
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': API_KEY
+        },
+        body: JSON.stringify(data)
+      });
+    } catch (e) {
+      console.error("Ошибка сохранения данных:", e);
+    }
+  }
+
+  function renderTable(data) {
+    const tbody = document.getElementById("tableBody");
+    tbody.innerHTML = "";
+
+    players.forEach((player, index) => {
+      const tr = document.createElement("tr");
+
+      tr.innerHTML = `
+        <td>${player}</td>
+        ${fields.map(f => {
+          const value = (data[player] && data[player][f]) || "";
+          return `<td><input type="text" placeholder="12:10 - 15:30" data-player="${player}" data-field="${f}" value="${value}" /></td>`;
+        }).join("")}
+      `;
+      tbody.appendChild(tr);
+    });
+
+    document.querySelectorAll("input").forEach(input => {
+      input.addEventListener("change", async e => {
+        const player = e.target.dataset.player;
+        const field = e.target.dataset.field;
+        const value = e.target.value;
+
+        data[player] = data[player] || {};
+        data[player][field] = value;
+
+        await saveDataToServer(data);
+        calculateOptimal();
+      });
+    });
+  }
+
+  async function calculateOptimal() {
+    const data = await loadDataFromServer();
+
+    const results = {
+      sat1: findOptimalTime(players.map(p => (data[p] && data[p].sat1) || "")),
+      sat2: findOptimalTime(players.map(p => (data[p] && data[p].sat2) || "")),
+      sun1: findOptimalTime(players.map(p => (data[p] && data[p].sun1) || "")),
+      sun2: findOptimalTime(players.map(p => (data[p] && data[p].sun2) || ""))
+    };
+
+    let resultHTML = "<h2>Оптимальные времена:</h2>";
+    resultHTML += `<p><strong>Суббота 1:</strong> ${results.sat1.time}</p>`;
+    resultHTML += `<ul>${results.sat1.players.map(p => `<li>${p}</li>`).join("")}</ul>`;
+
+    resultHTML += `<p><strong>Суббота 2:</strong> ${results.sat2.time}</p>`;
+    resultHTML += `<ul>${results.sat2.players.map(p => `<li>${p}</li>`).join("")}</ul>`;
+
+    resultHTML += `<p><strong>Воскресенье 1:</strong> ${results.sun1.time}</p>`;
+    resultHTML += `<ul>${results.sun1.players.map(p => `<li>${p}</li>`).join("")}</ul>`;
+
+    resultHTML += `<p><strong>Воскресенье 2:</strong> ${results.sun2.time}</p>`;
+    resultHTML += `<ul>${results.sun2.players.map(p => `<li>${p}</li>`).join("")}</ul>`;
+
+    document.getElementById("results").innerHTML = resultHTML;
+  }
+
+  async function init() {
+    const data = await loadDataFromServer();
+    renderTable(data);
+    setInterval(async () => {
+      const updatedData = await loadDataFromServer();
+      renderTable(updatedData);
+    }, 5000); // Обновление каждые 5 секунд
+  }
+
+  init();
+</script>
+
+</body>
+</html>
