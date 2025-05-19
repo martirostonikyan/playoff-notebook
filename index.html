@@ -35,11 +35,19 @@
       border: 1px solid #ccc;
     }
     button {
-      display: block;
-      margin: 20px auto;
-      padding: 10px 20px;
+      display: inline-block;
+      margin: 10px 10px 20px 0;
+      padding: 8px 16px;
       font-size: 16px;
+      border: none;
+      background-color: #4CAF50;
+      color: white;
+      border-radius: 4px;
       cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #45a049;
     }
   </style>
 </head>
@@ -61,6 +69,8 @@
 </table>
 
 <button onclick="calculateOptimal()">Найти оптимальное время</button>
+<button onclick="init()">🔄 Обновить таблицу</button>
+
 <div class="result" id="results"></div>
 
 <script>
@@ -84,9 +94,9 @@
 
   const fields = ["sat1", "sat2", "sun1", "sun2"];
 
-  // Замени эти значения на свои:
-  const BIN_ID = '682b4ef78960c979a59cfbf0';
-  const API_KEY = '$2a$10$.gwzdXej8Y3r5xYlrDSBMeoT7bppAIeQyN8uDMh5MbJIi1K41ZoLa'; // "$" обязателен!
+  // Замени на свои значения после регистрации на JSONBin.io
+  const BIN_ID = '65fXXXXXXXXXXXXXXXXX';
+  const API_KEY = '$ABCDEF1234567890ABCDEF1234567890';
 
   function parseTime(time) {
     if (!time || !/^\d{1,2}:\d{2}$/.test(time)) return null;
@@ -169,7 +179,7 @@
     }
   }
 
-  function renderTable(data) {
+  async function renderTable(data) {
     const tbody = document.getElementById("tableBody");
     tbody.innerHTML = "";
 
@@ -196,7 +206,7 @@
         data[player][field] = value;
 
         await saveDataToServer(data);
-        calculateOptimal();
+        calculateOptimal(); // Пересчитываем оптимальное время сразу после сохранения
       });
     });
   }
@@ -229,12 +239,11 @@
 
   async function init() {
     const data = await loadDataFromServer();
-    renderTable(data);
-    setInterval(async () => {
-      const updatedData = await loadDataFromServer();
-      renderTable(updatedData);
-    }, 5000); // Обновление каждые 5 секунд
+    await renderTable(data);
+    await calculateOptimal(); // Пересчитаем оптимальное время после обновления
   }
+
+  window.calculateOptimal = calculateOptimal;
 
   init();
 </script>
